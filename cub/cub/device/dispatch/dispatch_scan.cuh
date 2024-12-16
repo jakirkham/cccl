@@ -138,7 +138,7 @@ template <typename InputIteratorT,
                                                                ::cuda::std::_If<::cuda::std::is_same_v<InitValueT, NullType>,
                                                                                 cub::detail::value_t<InputIteratorT>,
                                                                                 typename InitValueT::value_type>>,
-          typename PolicyHub    = detail::scan::policy_hub<AccumT, ScanOpT>,
+          typename PolicyHub    = detail::scan::policy_hub<AccumT, OffsetT, ScanOpT>,
           bool ForceInclusive   = false,
           typename KernelSource = detail::scan::DeviceScanKernelSource<
             typename PolicyHub::MaxPolicy,
@@ -150,7 +150,6 @@ template <typename InputIteratorT,
             AccumT,
             ForceInclusive>,
           typename KernelLauncherFactory = detail::TripleChevronFactory>
-
 struct DispatchScan
 {
   //---------------------------------------------------------------------
