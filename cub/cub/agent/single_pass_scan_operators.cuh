@@ -545,8 +545,10 @@ struct tile_state_with_memory_order
 /**
  * Tile status interface.
  */
+_CCCL_SUPPRESS_DEPRECATED_PUSH
 template <typename T, bool SINGLE_WORD = Traits<T>::PRIMITIVE>
 struct ScanTileState;
+_CCCL_SUPPRESS_DEPRECATED_POP
 
 /**
  * Tile status interface specialized for scan status and value types
@@ -948,10 +950,12 @@ struct ScanTileState<T, false>
  * Tile status interface for reduction by key.
  *
  */
+_CCCL_SUPPRESS_DEPRECATED_PUSH
 template <typename ValueT,
           typename KeyT,
           bool SINGLE_WORD = (Traits<ValueT>::PRIMITIVE) && (sizeof(ValueT) + sizeof(KeyT) < 16)>
 struct ReduceByKeyScanTileState;
+_CCCL_SUPPRESS_DEPRECATED_POP
 
 /**
  * Tile status interface for reduction by key, specialized for scan status and value types that

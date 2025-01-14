@@ -29,11 +29,12 @@
 #include <cub/device/device_histogram.cuh>
 
 #include <thrust/iterator/counting_iterator.h>
+#include <cub/util_type.cuh>
 
 #include <cuda/std/__algorithm_>
 #include <cuda/std/array>
 #include <cuda/std/bit>
-#include <cuda/std/type_traits>
+#include <cuda/type_traits>
 
 #include <algorithm>
 #include <limits>
@@ -212,7 +213,7 @@ struct bit_and_anything
   template <typename T>
   _CCCL_HOST_DEVICE auto operator()(const T& a, const T& b) const -> T
   {
-    using U = typename cub::Traits<T>::UnsignedBits;
+    using U = typename cub::detail::unsigned_bits_t<T>;
     return ::cuda::std::bit_cast<T>(static_cast<U>(::cuda::std::bit_cast<U>(a) & ::cuda::std::bit_cast<U>(b)));
   }
 };
@@ -421,8 +422,7 @@ using types =
 C2H_TEST("DeviceHistogram::Histogram* basic use", "[histogram][device]", types)
 {
   using sample_t = c2h::get<0, TestType>;
-  using level_t =
-    typename cs::conditional<cub::NumericTraits<sample_t>::CATEGORY == cub::FLOATING_POINT, sample_t, int>::type;
+  using level_t  = typename cs::conditional<cuda::is_floating_point_v<sample_t>, sample_t, int>::type;
   // Max for int8/uint8 is 2^8, for half_t is 2^10. Beyond, we would need a different level generation
   const auto max_level       = level_t{sizeof(sample_t) == 1 ? 126 : 1024};
   const auto max_level_count = (sizeof(sample_t) == 1 ? 126 : 1024) + 1;
@@ -436,7 +436,7 @@ C2H_TEST("DeviceHistogram::Histogram* large levels", "[histogram][device]", c2h:
   using sample_t             = c2h::get<0, TestType>;
   using level_t              = sample_t;
   const auto max_level_count = 128;
-  auto max_level             = cub::NumericTraits<level_t>::Max();
+  auto max_level             = cuda::std::numeric_limits<level_t>::max();
   _CCCL_IF_CONSTEXPR (sizeof(sample_t) > sizeof(int))
   {
     max_level /= static_cast<level_t>(max_level_count - 1); // cf. overflow detection in ScaleTransform::MayOverflow

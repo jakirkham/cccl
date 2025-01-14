@@ -217,8 +217,7 @@ c2h::host_vector<KeyT> get_striped_keys(const c2h::host_vector<KeyT>& h_keys, in
   c2h::host_vector<KeyT> h_striped_keys(h_keys);
   KeyT* h_striped_keys_data = thrust::raw_pointer_cast(h_striped_keys.data());
 
-  using traits_t      = cub::Traits<KeyT>;
-  using bit_ordered_t = typename traits_t::UnsignedBits;
+  using bit_ordered_t = typename cub::Twiddle<KeyT>::UnsignedBits;
 
   const int num_bits = end_bit - begin_bit;
 
@@ -226,7 +225,7 @@ c2h::host_vector<KeyT> get_striped_keys(const c2h::host_vector<KeyT>& h_keys, in
   {
     bit_ordered_t key = ::cuda::std::bit_cast<bit_ordered_t>(h_keys[i]);
 
-    _CCCL_IF_CONSTEXPR (traits_t::CATEGORY == cub::FLOATING_POINT)
+    _CCCL_IF_CONSTEXPR (::cuda::is_floating_point_v<KeyT>)
     {
       const bit_ordered_t negative_zero = bit_ordered_t(1) << bit_ordered_t(sizeof(bit_ordered_t) * 8 - 1);
 
@@ -236,7 +235,7 @@ c2h::host_vector<KeyT> get_striped_keys(const c2h::host_vector<KeyT>& h_keys, in
       }
     }
 
-    key = traits_t::TwiddleIn(key);
+    key = cub::Twiddle<KeyT>::In(key);
 
     if ((begin_bit > 0) || (end_bit < static_cast<int>(sizeof(KeyT) * 8)))
     {
@@ -290,8 +289,7 @@ c2h::host_vector<std::size_t> get_permutation(
   c2h::host_vector<std::size_t> h_permutation(h_keys.size());
   thrust::sequence(h_permutation.begin(), h_permutation.end());
 
-  using traits_t      = cub::Traits<KeyT>;
-  using bit_ordered_t = typename traits_t::UnsignedBits;
+  using bit_ordered_t = typename cub::Twiddle<KeyT>::UnsignedBits;
 
   auto bit_ordered_striped_keys =
     reinterpret_cast<const bit_ordered_t*>(thrust::raw_pointer_cast(h_striped_keys.data()));

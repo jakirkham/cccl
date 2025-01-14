@@ -53,7 +53,7 @@
 #include <cuda/std/__algorithm/min.h>
 #include <cuda/std/cstdint>
 #include <cuda/std/tuple>
-#include <cuda/std/type_traits>
+#include <cuda/type_traits>
 
 CUB_NAMESPACE_BEGIN
 
@@ -73,11 +73,14 @@ CUB_NAMESPACE_BEGIN
     and only one of them is used, the sorting works correctly. For double, the
     same applies, but with 64-bit patterns.
 */
-template <typename KeyT, Category TypeCategory = Traits<KeyT>::CATEGORY>
+template <typename KeyT, bool IsFP = ::cuda::is_floating_point_v<KeyT>>
 struct BaseDigitExtractor
 {
-  using TraitsT      = Traits<KeyT>;
-  using UnsignedBits = typename TraitsT::UnsignedBits;
+  _CCCL_SUPPRESS_DEPRECATED_PUSH
+  static_assert(Traits<KeyT>::CATEGORY != FLOATING_POINT, "");
+  _CCCL_SUPPRESS_DEPRECATED_POP
+
+  using UnsignedBits = typename Twiddle<KeyT>::UnsignedBits;
 
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits ProcessFloatMinusZero(UnsignedBits key)
   {
@@ -86,16 +89,19 @@ struct BaseDigitExtractor
 };
 
 template <typename KeyT>
-struct BaseDigitExtractor<KeyT, FLOATING_POINT>
+struct BaseDigitExtractor<KeyT, true>
 {
-  using TraitsT      = Traits<KeyT>;
-  using UnsignedBits = typename TraitsT::UnsignedBits;
+  _CCCL_SUPPRESS_DEPRECATED_PUSH
+  static_assert(Traits<KeyT>::CATEGORY == FLOATING_POINT, "");
+  _CCCL_SUPPRESS_DEPRECATED_POP
+
+  using UnsignedBits = typename Twiddle<KeyT>::UnsignedBits;
 
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits ProcessFloatMinusZero(UnsignedBits key)
   {
     UnsignedBits TWIDDLED_MINUS_ZERO_BITS =
-      TraitsT::TwiddleIn(UnsignedBits(1) << UnsignedBits(8 * sizeof(UnsignedBits) - 1));
-    UnsignedBits TWIDDLED_ZERO_BITS = TraitsT::TwiddleIn(0);
+      Twiddle<KeyT>::In(UnsignedBits(1) << UnsignedBits(8 * sizeof(UnsignedBits) - 1));
+    UnsignedBits TWIDDLED_ZERO_BITS = Twiddle<KeyT>::In(0);
     return key == TWIDDLED_MINUS_ZERO_BITS ? TWIDDLED_ZERO_BITS : key;
   }
 };
@@ -232,23 +238,23 @@ using decomposer_check_t = is_tuple_of_references_to_fundamental_types_t<invoke_
 template <class T>
 struct bit_ordered_conversion_policy_t
 {
-  using bit_ordered_type = typename Traits<T>::UnsignedBits;
+  using bit_ordered_type = typename Twiddle<T>::UnsignedBits;
 
   static _CCCL_HOST_DEVICE bit_ordered_type to_bit_ordered(detail::identity_decomposer_t, bit_ordered_type val)
   {
-    return Traits<T>::TwiddleIn(val);
+    return Twiddle<T>::In(val);
   }
 
   static _CCCL_HOST_DEVICE bit_ordered_type from_bit_ordered(detail::identity_decomposer_t, bit_ordered_type val)
   {
-    return Traits<T>::TwiddleOut(val);
+    return Twiddle<T>::Out(val);
   }
 };
 
 template <class T>
 struct bit_ordered_inversion_policy_t
 {
-  using bit_ordered_type = typename Traits<T>::UnsignedBits;
+  using bit_ordered_type = typename Twiddle<T>::UnsignedBits;
 
   static _CCCL_HOST_DEVICE bit_ordered_type inverse(detail::identity_decomposer_t, bit_ordered_type val)
   {
@@ -259,7 +265,7 @@ struct bit_ordered_inversion_policy_t
 template <class T, bool = is_fundamental_type<T>::value>
 struct traits_t
 {
-  using bit_ordered_type              = typename Traits<T>::UnsignedBits;
+  using bit_ordered_type              = unsigned_bits_t<T>;
   using bit_ordered_conversion_policy = bit_ordered_conversion_policy_t<T>;
   using bit_ordered_inversion_policy  = bit_ordered_inversion_policy_t<T>;
 

@@ -47,7 +47,7 @@
 
 #include <cuda/std/cstdint>
 #include <cuda/std/limits>
-#include <cuda/std/type_traits>
+#include <cuda/type_traits>
 
 #if _CCCL_HAS_NVFP16()
 #  include <cuda_fp16.h>
@@ -66,6 +66,10 @@ _CCCL_DIAG_PUSH
 #  include <cuda_fp8.h>
 _CCCL_DIAG_POP
 #endif // _CCCL_HAS_NVFP8()
+
+#if defined(_CCCL_HAS_NVFP8)
+#  include <cuda_fp8.h>
+#endif // _CCCL_HAS_NVFP8
 
 #if _CCCL_COMPILER(NVRTC)
 #  include <cuda/std/iterator>
@@ -786,9 +790,8 @@ enum Category
   FLOATING_POINT
 };
 
-/**
- * \brief Basic type traits
- */
+namespace detail
+{
 template <Category _CATEGORY, bool _PRIMITIVE, bool _NULL_TYPE, typename _UnsignedBits, typename T>
 struct BaseTraits
 {
@@ -797,9 +800,6 @@ struct BaseTraits
   static constexpr bool NULL_TYPE    = _NULL_TYPE;
 };
 
-/**
- * Basic type traits (unsigned primitive specialization)
- */
 template <typename _UnsignedBits, typename T>
 struct BaseTraits<UNSIGNED_INTEGER, true, false, _UnsignedBits, T>
 {
@@ -838,9 +838,6 @@ struct BaseTraits<UNSIGNED_INTEGER, true, false, _UnsignedBits, T>
   }
 };
 
-/**
- * Basic type traits (signed primitive specialization)
- */
 template <typename _UnsignedBits, typename T>
 struct BaseTraits<SIGNED_INTEGER, true, false, _UnsignedBits, T>
 {
@@ -890,9 +887,6 @@ struct CCCL_DEPRECATED_BECAUSE("Use cuda::std::numeric_limits instead") FpLimits
   }
 };
 
-/**
- * Basic type traits (fp primitive specialization)
- */
 template <typename _UnsignedBits, typename T>
 struct BaseTraits<FLOATING_POINT, true, false, _UnsignedBits, T>
 {
@@ -932,9 +926,6 @@ struct BaseTraits<FLOATING_POINT, true, false, _UnsignedBits, T>
   }
 };
 
-/**
- * \brief Numeric type traits
- */
 // clang-format off
 template <typename T> struct NumericTraits :            BaseTraits<NOT_A_NUMBER, false, false, T, T> {};
 
@@ -1028,26 +1019,190 @@ struct NumericTraits<__int128_t>
 template <> struct NumericTraits<float> :               BaseTraits<FLOATING_POINT, true, false, unsigned int, float> {};
 template <> struct NumericTraits<double> :              BaseTraits<FLOATING_POINT, true, false, unsigned long long, double> {};
 #  if _CCCL_HAS_NVFP16()
-    template <> struct NumericTraits<__half> :          BaseTraits<FLOATING_POINT, true, false, unsigned short, __half> {};
+template <> struct NumericTraits<__half> :          BaseTraits<FLOATING_POINT, true, false, unsigned short, __half> {};
 #  endif // _CCCL_HAS_NVFP16()
 #  if _CCCL_HAS_NVBF16()
-    template <> struct NumericTraits<__nv_bfloat16> :   BaseTraits<FLOATING_POINT, true, false, unsigned short, __nv_bfloat16> {};
+template <> struct NumericTraits<__nv_bfloat16> :   BaseTraits<FLOATING_POINT, true, false, unsigned short, __nv_bfloat16> {};
 #  endif // _CCCL_HAS_NVBF16()
 
 #if _CCCL_HAS_NVFP8()
-    template <> struct NumericTraits<__nv_fp8_e4m3> :   BaseTraits<FLOATING_POINT, true, false, __nv_fp8_storage_t, __nv_fp8_e4m3> {};
-    template <> struct NumericTraits<__nv_fp8_e5m2> :   BaseTraits<FLOATING_POINT, true, false, __nv_fp8_storage_t, __nv_fp8_e5m2> {};
+template <> struct NumericTraits<__nv_fp8_e4m3> :   BaseTraits<FLOATING_POINT, true, false, __nv_fp8_storage_t, __nv_fp8_e4m3> {};
+template <> struct NumericTraits<__nv_fp8_e5m2> :   BaseTraits<FLOATING_POINT, true, false, __nv_fp8_storage_t, __nv_fp8_e5m2> {};
 #endif // _CCCL_HAS_NVFP8()
 
 template <> struct NumericTraits<bool> :                BaseTraits<UNSIGNED_INTEGER, true, false, typename UnitWord<bool>::VolatileWord, bool> {};
 // clang-format on
 
-/**
- * \brief Type traits
- */
 template <typename T>
 struct Traits : NumericTraits<typename ::cuda::std::remove_cv<T>::type>
 {};
+} // namespace detail
+
+template <Category _CATEGORY, bool _PRIMITIVE, bool _NULL_TYPE, typename _UnsignedBits, typename T>
+using BaseTraits CCCL_DEPRECATED_BECAUSE("Use cuda::std::numeric_limits and cuda::is_floating_point etc. instead") =
+  detail::BaseTraits<_CATEGORY, _PRIMITIVE, _NULL_TYPE, _UnsignedBits, T>;
+
+template <typename T>
+using FpLimits CCCL_DEPRECATED_BECAUSE("Use cuda::std::numeric_limits instead") = detail::FpLimits<T>;
+
+template <typename T>
+using NumericTraits CCCL_DEPRECATED_BECAUSE("Use cuda::std::numeric_limits and cuda::is_floating_point etc. instead") =
+  detail::NumericTraits<T>;
+
+template <typename T>
+using Traits
+  CCCL_DEPRECATED_BECAUSE("Use cuda::std::numeric_limits and cuda::is_floating_point etc. instead") = detail::Traits<T>;
+
+namespace detail
+{
+//! Trait to get an unsigned integral type with the same size as T, exposed as a nested alias ::type.
+template <typename T, typename SFINAE = void>
+struct unsigned_bits;
+
+template <typename T>
+struct unsigned_bits<T, ::cuda::std::enable_if_t<::cuda::std::is_unsigned_v<T>>>
+{
+  using type = T;
+};
+
+template <typename T>
+struct unsigned_bits<T, ::cuda::std::enable_if_t<::cuda::std::is_signed_v<T>>>
+{
+  using type = ::cuda::std::make_unsigned_t<T>;
+};
+
+template <>
+struct unsigned_bits<float, void>
+{
+  using type = unsigned int;
+};
+
+template <>
+struct unsigned_bits<double, void>
+{
+  using type = unsigned long long;
+};
+
+#  if defined(_CCCL_HAS_NVFP16)
+template <>
+struct unsigned_bits<__half, void>
+{
+  using type = unsigned short;
+};
+#  endif // _CCCL_HAS_NVFP16
+
+#  if defined(_CCCL_HAS_NVBF16)
+template <>
+struct unsigned_bits<__nv_bfloat16, void>
+{
+  using type = unsigned short;
+};
+#  endif // _CCCL_HAS_NVBF16
+
+#  if defined(__CUDA_FP8_TYPES_EXIST__)
+template <>
+struct unsigned_bits<__nv_fp8_e4m3, void>
+{
+  using type = __nv_fp8_storage_t;
+};
+template <>
+struct unsigned_bits<__nv_fp8_e5m2, void>
+{
+  using type = __nv_fp8_storage_t;
+};
+#  endif // __CUDA_FP8_TYPES_EXIST__
+
+template <>
+struct unsigned_bits<bool, void>
+{
+  using type = typename UnitWord<bool>::VolatileWord;
+};
+
+//! Alias to an unsigned integral type with the same size as T.
+template <typename T>
+using unsigned_bits_t = typename unsigned_bits<T>::type;
+} // namespace detail
+
+// TODO(bgruber): do we actually need to expose Twiddle publicly?
+//! Bit twiddling utilities
+template <typename T, typename SFINAE = void>
+struct Twiddle;
+
+template <typename T>
+struct Twiddle<
+  T,
+  ::cuda::std::enable_if_t<::cuda::std::__cccl_is_unsigned_integer<T>::value
+                           || (::cuda::std::is_same_v<T, char> && !::cuda::std::numeric_limits<char>::is_signed)>>
+{
+  using UnsignedBits = T;
+
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits In(UnsignedBits key)
+  {
+    return key;
+  }
+
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits Out(UnsignedBits key)
+  {
+    return key;
+  }
+};
+
+template <typename T>
+struct Twiddle<
+  T,
+  ::cuda::std::enable_if_t<::cuda::std::__cccl_is_signed_integer<T>::value
+                           || (::cuda::std::is_same_v<T, char> && ::cuda::std::numeric_limits<char>::is_signed)>>
+{
+  using UnsignedBits = detail::unsigned_bits_t<T>;
+
+  static constexpr UnsignedBits high_bit = UnsignedBits(1) << (sizeof(UnsignedBits) * CHAR_BIT - 1);
+
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits In(UnsignedBits key)
+  {
+    return key ^ high_bit;
+  }
+
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits Out(UnsignedBits key)
+  {
+    return key ^ high_bit;
+  }
+};
+
+template <typename T>
+struct Twiddle<T, ::cuda::std::enable_if_t<::cuda::is_floating_point_v<T>>>
+{
+  using UnsignedBits = detail::unsigned_bits_t<T>;
+
+  static constexpr UnsignedBits high_bit = UnsignedBits(1) << (sizeof(UnsignedBits) * CHAR_BIT - 1);
+
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits In(UnsignedBits key)
+  {
+    const UnsignedBits mask = (key & high_bit) ? UnsignedBits(-1) : high_bit;
+    return key ^ mask;
+  };
+
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits Out(UnsignedBits key)
+  {
+    const UnsignedBits mask = (key & high_bit) ? high_bit : UnsignedBits(-1);
+    return key ^ mask;
+  }
+};
+
+template <>
+struct Twiddle<bool, void>
+{
+  using UnsignedBits = detail::unsigned_bits_t<bool>;
+
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits In(UnsignedBits key)
+  {
+    return key;
+  }
+
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits Out(UnsignedBits key)
+  {
+    return key;
+  }
+};
 
 #endif // _CCCL_DOXYGEN_INVOKED
 

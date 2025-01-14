@@ -49,6 +49,7 @@
 #include <cub/util_type.cuh>
 
 #include <cuda/ptx>
+#include <cuda/std/type_traits>
 
 CUB_NAMESPACE_BEGIN
 namespace detail
@@ -89,8 +90,12 @@ struct WarpScanShfl
     {
       /// Whether the data type is a small (32b or less) integer for which we can use a single SFHL instruction per
       /// exchange
-      IS_SMALL_UNSIGNED = (Traits<S>::CATEGORY == UNSIGNED_INTEGER) && (sizeof(S) <= sizeof(unsigned int))
+      IS_SMALL_UNSIGNED = ::cuda::std::__cccl_is_unsigned_integer<S>::value && (sizeof(S) <= sizeof(unsigned int))
     };
+    _CCCL_SUPPRESS_DEPRECATED_PUSH
+    static_assert(
+      IS_SMALL_UNSIGNED == ((Traits<S>::CATEGORY == UNSIGNED_INTEGER) && (sizeof(S) <= sizeof(unsigned int))), "");
+    _CCCL_SUPPRESS_DEPRECATED_POP
   };
 
   /// Shared memory storage layout type

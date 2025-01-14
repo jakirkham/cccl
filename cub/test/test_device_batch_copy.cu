@@ -55,9 +55,9 @@ template <typename T>
 void GenerateRandomData(
   T* rand_out,
   const std::size_t num_items,
-  const T min_rand_val                                                           = std::numeric_limits<T>::min(),
-  const T max_rand_val                                                           = std::numeric_limits<T>::max(),
-  const std::uint_fast32_t seed                                                  = 320981U,
+  const T min_rand_val          = ::cuda::std::numeric_limits<T>::min(),
+  const T max_rand_val          = ::cuda::std::numeric_limits<T>::max(),
+  const std::uint_fast32_t seed = 320981U,
   typename std::enable_if<std::is_integral<T>::value && (sizeof(T) >= 2)>::type* = nullptr)
 {
   // initialize random number generator
@@ -454,7 +454,7 @@ int main(int argc, char** argv)
   using ByteOffset64T = uint64_t;
   using RangeSize64T  = uint64_t;
   ByteOffset64T large_target_copy_size =
-    static_cast<ByteOffset64T>(std::numeric_limits<uint32_t>::max()) + (128ULL * 1024ULL * 1024ULL);
+    static_cast<ByteOffset64T>(::cuda::std::numeric_limits<uint32_t>::max()) + (128ULL * 1024ULL * 1024ULL);
   // Make sure min_range_size is in fact smaller than max range size
   constexpr RangeOffsetT single_range = 1;
 

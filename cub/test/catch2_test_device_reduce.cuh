@@ -114,36 +114,6 @@ CUB_NAMESPACE_END
 
 CUB_NAMESPACE_BEGIN
 
-/**
- * @brief Introduces the required NumericTraits for `c2h::custom_type_t`.
- */
-template <template <typename> class... Policies>
-struct NumericTraits<c2h::custom_type_t<Policies...>>
-{
-  using custom_t                     = c2h::custom_type_t<Policies...>;
-  static constexpr Category CATEGORY = NOT_A_NUMBER;
-  enum
-  {
-    PRIMITIVE = false,
-    NULL_TYPE = false,
-  };
-  __host__ __device__ static custom_t Max()
-  {
-    custom_t val{};
-    val.key = NumericTraits<decltype(std::declval<custom_t>().key)>::Max();
-    val.val = NumericTraits<decltype(std::declval<custom_t>().val)>::Max();
-    return val;
-  }
-
-  __host__ __device__ static custom_t Lowest()
-  {
-    custom_t val{};
-    val.key = NumericTraits<decltype(std::declval<custom_t>().key)>::Lowest();
-    val.val = NumericTraits<decltype(std::declval<custom_t>().val)>::Lowest();
-    return val;
-  }
-};
-
 template <typename Key, typename Value>
 static std::ostream& operator<<(std::ostream& os, const KeyValuePair<Key, Value>& val)
 {
@@ -405,7 +375,7 @@ void compute_segmented_argmin_reference(
   {
     if (h_offsets[seg] >= h_offsets[seg + 1])
     {
-      h_results[seg] = {1, cub::Traits<ItemT>::Max()};
+      h_results[seg] = {1, ::cuda::std::numeric_limits<ItemT>::max()};
     }
     else
     {
@@ -432,7 +402,7 @@ void compute_segmented_argmax_reference(
   {
     if (h_offsets[seg] >= h_offsets[seg + 1])
     {
-      h_results[seg] = {1, cub::Traits<ItemT>::Lowest()};
+      h_results[seg] = {1, ::cuda::std::numeric_limits<ItemT>::lowest()};
     }
     else
     {

@@ -190,7 +190,7 @@ C2H_TEST("DeviceRadixSort::SortKeys: bit windows", "[keys][radix][sort][device]"
 C2H_TEST("DeviceRadixSort::SortKeys: negative zero handling", "[keys][radix][sort][device]", fp_key_types)
 {
   using key_t  = c2h::get<0, TestType>;
-  using bits_t = typename cub::Traits<key_t>::UnsignedBits;
+  using bits_t = typename cub::Twiddle<key_t>::UnsignedBits;
 
   constexpr std::size_t num_bits = sizeof(key_t) * CHAR_BIT;
   const key_t positive_zero      = ::cuda::std::bit_cast<key_t>(bits_t(0));
@@ -511,7 +511,7 @@ C2H_TEST("DeviceRadixSort::SortKeys: 32-bit overflow check", "[large][keys][radi
 
   // Test problem sizes near and at the maximum offset value to ensure that internal calculations
   // do not overflow.
-  constexpr std::size_t max_offset    = std::numeric_limits<num_items_t>::max();
+  constexpr std::size_t max_offset    = ::cuda::std::numeric_limits<num_items_t>::max();
   constexpr std::size_t min_num_items = max_offset - 5;
   constexpr std::size_t max_num_items = max_offset;
   const std::size_t num_items         = GENERATE_COPY(min_num_items, max_num_items);

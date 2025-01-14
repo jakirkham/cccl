@@ -28,6 +28,7 @@
 
 #pragma once
 
+#include "cuda/std/__internal/namespaces.h"
 #ifdef _WIN32
 #  include <windows.h>
 #  undef small // Windows is terrible for polluting macro namespace
@@ -581,7 +582,7 @@ __host__ __device__ __forceinline__ void InitValue(GenMode gen_mode, T& value, s
       case RANDOM_MINUS_PLUS_ZERO: {
         // Replace roughly 1/128 of values with -0.0 or +0.0, and
         // generate the rest randomly
-        using UnsignedBits = typename CUB_NS_QUALIFIER::Traits<T>::UnsignedBits;
+        using UnsignedBits = CUB_NS_QUALIFIER::detail::unsigned_bits_t<T>;
         char c;
         RandomBits(c);
         if (c == 0)
@@ -967,36 +968,30 @@ __host__ __device__ __forceinline__ void InitValue(GenMode gen_mode, TestFoo& va
   InitValue(gen_mode, value.w, index);
 }
 
-/// numeric_limits<TestFoo> specialization
-CUB_NAMESPACE_BEGIN
+_LIBCUDACXX_BEGIN_NAMESPACE_STD
 template <>
-struct NumericTraits<TestFoo>
+class numeric_limits<TestFoo>
 {
-  static constexpr Category CATEGORY = NOT_A_NUMBER;
-  enum
-  {
-    PRIMITIVE = false,
-    NULL_TYPE = false,
-  };
-  __host__ __device__ static TestFoo Max()
+private:
+  __host__ __device__ static TestFoo max()
   {
     return TestFoo::MakeTestFoo(
-      NumericTraits<long long>::Max(),
-      NumericTraits<int>::Max(),
-      NumericTraits<short>::Max(),
-      NumericTraits<char>::Max());
+      numeric_limits<long long>::max(),
+      numeric_limits<int>::max(),
+      numeric_limits<short>::max(),
+      numeric_limits<char>::max());
   }
 
-  __host__ __device__ static TestFoo Lowest()
+  __host__ __device__ static TestFoo lowest()
   {
     return TestFoo::MakeTestFoo(
-      NumericTraits<long long>::Lowest(),
-      NumericTraits<int>::Lowest(),
-      NumericTraits<short>::Lowest(),
-      NumericTraits<char>::Lowest());
+      numeric_limits<long long>::lowest(),
+      numeric_limits<int>::lowest(),
+      numeric_limits<short>::lowest(),
+      numeric_limits<char>::lowest());
   }
 };
-CUB_NAMESPACE_END
+_LIBCUDACXX_END_NAMESPACE_STD
 
 //---------------------------------------------------------------------
 // Complex data type TestBar (with optimizations for fence-free warp-synchrony)
@@ -1101,28 +1096,21 @@ __host__ __device__ __forceinline__ void InitValue(GenMode gen_mode, TestBar& va
   InitValue(gen_mode, value.y, index);
 }
 
-/// numeric_limits<TestBar> specialization
-CUB_NAMESPACE_BEGIN
+_LIBCUDACXX_BEGIN_NAMESPACE_STD
 template <>
-struct NumericTraits<TestBar>
+class numeric_limits<TestBar>
 {
-  static constexpr Category CATEGORY = NOT_A_NUMBER;
-  enum
+  __host__ __device__ static TestBar max()
   {
-    PRIMITIVE = false,
-    NULL_TYPE = false,
-  };
-  __host__ __device__ static TestBar Max()
-  {
-    return TestBar(NumericTraits<long long>::Max(), NumericTraits<int>::Max());
+    return TestBar(numeric_limits<long long>::max(), numeric_limits<int>::max());
   }
 
-  __host__ __device__ static TestBar Lowest()
+  __host__ __device__ static TestBar lowest()
   {
-    return TestBar(NumericTraits<long long>::Lowest(), NumericTraits<int>::Lowest());
+    return TestBar(numeric_limits<long long>::lowest(), numeric_limits<int>::lowest());
   }
 };
-CUB_NAMESPACE_END
+_LIBCUDACXX_END_NAMESPACE_STD
 
 /******************************************************************************
  * Helper routines for list comparison and display
