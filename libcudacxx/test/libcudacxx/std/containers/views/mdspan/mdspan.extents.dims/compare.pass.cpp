@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++11
+// UNSUPPORTED: c++11, c++14
 // UNSUPPORTED: msvc && c++14, msvc && c++17
 
 #include <cuda/std/cassert>

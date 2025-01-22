@@ -20,6 +20,7 @@
 #  pragma system_header
 #endif // no system header
 
+#include <cuda/std/__concepts/concept_macros.h>
 #include <cuda/std/__type_traits/integral_constant.h>
 #include <cuda/std/__type_traits/is_same.h>
 #include <cuda/std/__type_traits/negation.h>
@@ -63,6 +64,93 @@ _CCCL_INLINE_VAR constexpr bool __fold_or_v = __fold_or<_Preds...>::value;
 #  endif // !_CCCL_NO_VARIABLE_TEMPLATES
 
 #endif // _CCCL_NO_FOLD_EXPRESSIONS
+
+#if _CCCL_STD_VER >= 2017
+#  define _CCCL_FOLD_AND(__pred)           (__pred && ... && true)
+#  define _CCCL_FOLD_OR(__pred)            (__pred || ...)
+#  define _CCCL_FOLD_PLUS(__init, __args)  (__args + ... + __init)
+#  define _CCCL_FOLD_TIMES(__init, __args) (__args * ... * __init)
+
+#else // ^^^ _CCCL_STD_VER >= 2017 ^^^ / vvv _CCCL_STD_VER <= 2014 vvv
+
+template <class _Tp>
+_LIBCUDACXX_HIDE_FROM_ABI constexpr _Tp __variadic_sum(_Tp __init) noexcept
+{
+  return __init;
+}
+
+template <class _Tp, class... _Args>
+_LIBCUDACXX_HIDE_FROM_ABI constexpr _Tp __variadic_sum(_Tp __init, _Args... __args)
+{
+  const _Tp __arr[sizeof...(_Args)] = {static_cast<_Tp>(__args)...};
+  for (size_t __i = 0; __i < sizeof...(_Args); ++__i)
+  {
+    __init += __arr[__i];
+  }
+  return __init;
+}
+
+template <class _Tp>
+_LIBCUDACXX_HIDE_FROM_ABI constexpr _Tp __variadic_times(_Tp __init) noexcept
+{
+  return __init;
+}
+
+template <class _Tp, class... _Args>
+_LIBCUDACXX_HIDE_FROM_ABI constexpr _Tp __variadic_times(_Tp __init, _Args... __args)
+{
+  const _Tp __arr[sizeof...(_Args)] = {static_cast<_Tp>(__args)...};
+  for (size_t __i = 0; __i < sizeof...(_Args); ++__i)
+  {
+    __init *= __arr[__i];
+  }
+  return __init;
+}
+
+_LIBCUDACXX_HIDE_FROM_ABI constexpr bool __variadic_and() noexcept
+{
+  return true;
+}
+
+template <class... _Args>
+_LIBCUDACXX_HIDE_FROM_ABI constexpr bool __variadic_and(_Args... __args)
+{
+  const bool __arr[sizeof...(_Args)] = {static_cast<bool>(__args)...};
+  for (size_t __i = 0; __i < sizeof...(_Args); ++__i)
+  {
+    if (!__arr[__i])
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+_LIBCUDACXX_HIDE_FROM_ABI constexpr bool __variadic_or() noexcept
+{
+  return false;
+}
+
+template <class... _Args>
+_LIBCUDACXX_HIDE_FROM_ABI constexpr bool __variadic_or(_Args... __args)
+{
+  const bool __arr[sizeof...(_Args)] = {static_cast<bool>(__args)...};
+  for (size_t __i = 0; __i < sizeof...(_Args); ++__i)
+  {
+    if (__arr[__i])
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+#  define _CCCL_FOLD_AND(__pred)           _CUDA_VSTD::__variadic_and(__pred...)
+#  define _CCCL_FOLD_OR(__pred)            _CUDA_VSTD::__variadic_or(__pred...)
+#  define _CCCL_FOLD_PLUS(__init, __args)  _CUDA_VSTD::__variadic_sum(__init, __args...)
+#  define _CCCL_FOLD_TIMES(__init, __args) _CUDA_VSTD::__variadic_times(__init, __args...)
+
+#endif // _CCCL_STD_VER <= 2014
 
 _LIBCUDACXX_END_NAMESPACE_STD
 
