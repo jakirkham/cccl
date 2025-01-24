@@ -29,7 +29,6 @@ int main(int, char**)
   {
     // expected-error-re@optional:* 2 {{{{(static_assert|static assertion)}} failed{{.*}}instantiation of optional with
     // a reference type is ill-formed}}
-    optional<int&> opt1;
     optional<int&&> opt2;
   }
   {

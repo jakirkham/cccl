@@ -26,7 +26,7 @@ struct X
   {
     return 3;
   }
-  __host__ __device__ int test() &
+  __host__ __device__ constexpr int test() &
   {
     return 4;
   }
@@ -34,7 +34,7 @@ struct X
   {
     return 5;
   }
-  __host__ __device__ int test() &&
+  __host__ __device__ constexpr int test() &&
   {
     return 6;
   }
@@ -48,13 +48,7 @@ struct Y
   }
 };
 
-__host__ __device__ constexpr int test()
-{
-  optional<Y> opt{Y{}};
-  return (*opt).test();
-}
-
-int main(int, char**)
+__host__ __device__ constexpr bool test()
 {
   {
     optional<X> opt;
@@ -69,14 +63,43 @@ int main(int, char**)
     // operator.
     // Regardless this function should still be noexcept(false) because
     // it has a narrow contract.
+
+    optional<X&> optref;
+    unused(optref);
+    ASSERT_SAME_TYPE(decltype(*optref), X&);
+    LIBCPP_STATIC_ASSERT(noexcept(*optref), "");
+    ASSERT_NOEXCEPT(*optref);
   }
+
   {
     optional<X> opt(X{});
     assert((*opt).test() == 4);
   }
-#if !(defined(TEST_COMPILER_CUDACC_BELOW_11_3) && defined(TEST_COMPILER_CLANG))
-  static_assert(test() == 7, "");
-#endif // !(defined(TEST_COMPILER_CUDACC_BELOW_11_3) && defined(TEST_COMPILER_CLANG))
+
+  {
+    X val{};
+    optional<X&> opt(val);
+    assert((*opt).test() == 4);
+  }
+
+  {
+    optional<Y> opt(Y{});
+    assert((*opt).test() == 7);
+  }
+
+  {
+    Y val{};
+    optional<Y&> opt(val);
+    assert((*opt).test() == 7);
+  }
+
+  return true;
+}
+
+int main(int, char**)
+{
+  test();
+  static_assert(test(), "");
 
   return 0;
 }

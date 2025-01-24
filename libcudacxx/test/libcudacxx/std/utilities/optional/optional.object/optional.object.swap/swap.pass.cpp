@@ -382,6 +382,23 @@ int main(int, char**)
     assert(static_cast<bool>(opt2) == false);
   }
 
+  {
+    int value       = 42;
+    int other_value = 1337;
+    optional<int&> opt1(value);
+    optional<int&> opt2(other_value);
+    static_assert(noexcept(swap(opt1, opt2)), "");
+    assert(opt1.has_value());
+    assert(*opt1 == value);
+    assert(opt2.has_value());
+    assert(*opt2 == other_value);
+    swap(opt1, opt2);
+    assert(opt1.has_value());
+    assert(*opt1 == other_value);
+    assert(opt2.has_value());
+    assert(*opt2 == value);
+  }
+
 #ifndef TEST_HAS_NO_EXCEPTIONS
   NV_IF_TARGET(NV_IS_HOST, (test_exceptions();))
 #endif // !TEST_HAS_NO_EXCEPTIONS

@@ -30,28 +30,38 @@ struct X
   }
 };
 
-__host__ __device__ constexpr bool check_reset()
+template <class T>
+__host__ __device__ constexpr void test()
 {
+  using O = optional<T>;
+  cuda::std::remove_reference_t<T> one{1};
   {
-    optional<int> opt;
+    O opt;
     static_assert(noexcept(opt.reset()) == true, "");
     opt.reset();
     assert(static_cast<bool>(opt) == false);
   }
   {
-    optional<int> opt(3);
+    O opt(one);
     opt.reset();
     assert(static_cast<bool>(opt) == false);
   }
+}
+
+__host__ __device__ constexpr bool test()
+{
+  test<int>();
+  test<int&>();
+
   return true;
 }
 
 int main(int, char**)
 {
-  check_reset();
+  test();
 #if TEST_STD_VER >= 2020
-  static_assert(check_reset());
-#endif
+  static_assert(test());
+#endif // TEST_STD_VER >= 2020
   {
     optional<X> opt;
     static_assert(noexcept(opt.reset()) == true, "");
