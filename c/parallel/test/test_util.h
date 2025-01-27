@@ -26,6 +26,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
 #include <cccl/c/reduce.h>
+#include <cccl/c/scan.h>
 #include <nvrtc.h>
 
 static std::string inspect_sass(const void* cubin, size_t cubin_size)
@@ -349,3 +350,9 @@ struct value_t
     return v;
   }
 };
+
+template <typename T>
+bool check_vectors_equal(const std::vector<T>& vec1, const std::vector<T>& vec2)
+{
+  return vec1.size() == vec2.size() && std::equal(vec1.begin(), vec1.end(), vec2.begin());
+}
