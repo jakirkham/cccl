@@ -321,7 +321,7 @@ template <typename T>
 _CCCL_DEVICE _CCCL_FORCEINLINE void
 ThreadStore(T* ptr, T val, Int2Type<STORE_VOLATILE> /*modifier*/, Int2Type<true> /*is_pointer*/)
 {
-  ThreadStoreVolatilePtr(ptr, val, Int2Type<Traits<T>::PRIMITIVE>());
+  ThreadStoreVolatilePtr(ptr, val, Int2Type<detail::is_primitive<T>::value>{});
 }
 
 /**

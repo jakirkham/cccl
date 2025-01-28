@@ -44,11 +44,13 @@
 
 #include <cstdint>
 
+#include <c2h/bfloat16.cuh>
 #include <c2h/custom_type.h>
 #include <c2h/device_policy.h>
 #include <c2h/extended_types.h>
 #include <c2h/fill_striped.h>
 #include <c2h/generators.h>
+#include <c2h/half.cuh>
 #include <c2h/vector.h>
 
 #if C2H_HAS_CURAND

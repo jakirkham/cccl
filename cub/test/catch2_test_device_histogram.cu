@@ -27,9 +27,9 @@
  ******************************************************************************/
 
 #include <cub/device/device_histogram.cuh>
+#include <cub/util_type.cuh>
 
 #include <thrust/iterator/counting_iterator.h>
-#include <cub/util_type.cuh>
 
 #include <cuda/std/__algorithm_>
 #include <cuda/std/array>

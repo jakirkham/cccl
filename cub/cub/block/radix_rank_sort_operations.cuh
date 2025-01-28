@@ -76,6 +76,7 @@ CUB_NAMESPACE_BEGIN
 template <typename KeyT, bool IsFP = ::cuda::is_floating_point_v<KeyT>>
 struct BaseDigitExtractor
 {
+  // TODO(bgruber): sanity check, remove eventually
   _CCCL_SUPPRESS_DEPRECATED_PUSH
   static_assert(Traits<KeyT>::CATEGORY != FLOATING_POINT, "");
   _CCCL_SUPPRESS_DEPRECATED_POP
@@ -91,6 +92,7 @@ struct BaseDigitExtractor
 template <typename KeyT>
 struct BaseDigitExtractor<KeyT, true>
 {
+  // TODO(bgruber): sanity check, remove eventually
   _CCCL_SUPPRESS_DEPRECATED_PUSH
   static_assert(Traits<KeyT>::CATEGORY == FLOATING_POINT, "");
   _CCCL_SUPPRESS_DEPRECATED_POP
@@ -214,7 +216,7 @@ struct is_fundamental_type
 };
 
 template <class T>
-struct is_fundamental_type<T, ::cuda::std::void_t<typename Traits<T>::UnsignedBits>>
+struct is_fundamental_type<T, ::cuda::std::void_t<typename unsigned_bits<T>::type>>
 {
   static constexpr bool value = true;
 };
@@ -262,6 +264,45 @@ struct bit_ordered_inversion_policy_t
   }
 };
 
+template <typename T, typename SFINAE = void>
+struct key_traits;
+
+template <typename T>
+struct key_traits<T,
+                  ::cuda::std::enable_if_t<(::cuda::std::is_integral<T>::value && ::cuda::std::is_unsigned<T>::value)
+#  if _CCCL_HAS_INT128()
+                                           || ::cuda::std::is_same<T, __uint128_t>::value
+#  endif // _CCCL_HAS_INT128()
+                                           >>
+{
+  using unsigned_bits                       = unsigned_bits_t<T>;
+  static constexpr unsigned_bits lowest_key = unsigned_bits(0);
+  static constexpr unsigned_bits max_key    = unsigned_bits(-1);
+};
+
+template <typename T>
+struct key_traits<T,
+                  ::cuda::std::enable_if_t<(::cuda::std::is_integral<T>::value && ::cuda::std::is_signed<T>::value)
+#  if _CCCL_HAS_INT128()
+                                           || ::cuda::std::is_same<T, __int128_t>::value>
+#  endif // _CCCL_HAS_INT128()
+                  >
+{
+  using unsigned_bits                       = unsigned_bits_t<T>;
+  static constexpr unsigned_bits high_bit   = unsigned_bits(1) << ((sizeof(unsigned_bits) * CHAR_BIT) - 1);
+  static constexpr unsigned_bits lowest_key = high_bit;
+  static constexpr unsigned_bits max_key    = unsigned_bits(-1) ^ lowest_key;
+};
+
+template <typename T>
+struct key_traits<T, ::cuda::std::enable_if_t<::cuda::is_floating_point<T>::value>>
+{
+  using unsigned_bits                       = unsigned_bits_t<T>;
+  static constexpr unsigned_bits high_bit   = unsigned_bits(1) << ((sizeof(unsigned_bits) * CHAR_BIT) - 1);
+  static constexpr unsigned_bits lowest_key = unsigned_bits(-1);
+  static constexpr unsigned_bits max_key    = unsigned_bits(-1) ^ high_bit;
+};
+
 template <class T, bool = is_fundamental_type<T>::value>
 struct traits_t
 {
@@ -274,12 +315,20 @@ struct traits_t
 
   static _CCCL_HOST_DEVICE bit_ordered_type min_raw_binary_key(detail::identity_decomposer_t)
   {
-    return Traits<T>::LOWEST_KEY;
+    // TODO(bgruber): sanity check, remove eventually
+    _CCCL_SUPPRESS_DEPRECATED_PUSH
+    static_assert(key_traits<T>::lowest_key == Traits<T>::LOWEST_KEY, "");
+    _CCCL_SUPPRESS_DEPRECATED_POP
+    return key_traits<T>::lowest_key;
   }
 
   static _CCCL_HOST_DEVICE bit_ordered_type max_raw_binary_key(detail::identity_decomposer_t)
   {
-    return Traits<T>::MAX_KEY;
+    // TODO(bgruber): sanity check, remove eventually
+    _CCCL_SUPPRESS_DEPRECATED_PUSH
+    static_assert(key_traits<T>::max_key == Traits<T>::MAX_KEY, "");
+    _CCCL_SUPPRESS_DEPRECATED_POP
+    return key_traits<T>::max_key;
   }
 
   static _CCCL_HOST_DEVICE int default_end_bit(detail::identity_decomposer_t)

@@ -33,6 +33,7 @@
 #include "catch2_radix_sort_helper.cuh"
 #include "catch2_segmented_sort_helper.cuh"
 #include <c2h/catch2_test_helper.h>
+#include <c2h/half.cuh>
 
 // FIXME: Graph launch disabled, algorithm syncs internally. WAR exists for device-launch, figure out how to enable for
 // graph launch.

@@ -290,7 +290,7 @@ C2H_VEC_OVERLOAD(ulonglong, unsigned long long)
 C2H_VEC_OVERLOAD(float, float)
 C2H_VEC_OVERLOAD(double, double)
 
-// Specialize cub::NumericTraits<T> and cuda::std::numeric_limits for vector types.
+// Specialize cuda::std::numeric_limits for vector types.
 
 #  define REPEAT_TO_LIST_1(a)  a
 #  define REPEAT_TO_LIST_2(a)  a, a
@@ -299,31 +299,6 @@ C2H_VEC_OVERLOAD(double, double)
 #  define REPEAT_TO_LIST(N, a) _CCCL_PP_CAT(REPEAT_TO_LIST_, N)(a)
 
 #  define C2H_VEC_TRAITS_OVERLOAD_IMPL(T, BaseT, N)                                   \
-    CUB_NAMESPACE_BEGIN                                                               \
-    namespace detail                                                                  \
-    {                                                                                 \
-    template <>                                                                       \
-    struct NumericTraits<T>                                                           \
-    {                                                                                 \
-      static constexpr Category CATEGORY = NOT_A_NUMBER;                              \
-      enum                                                                            \
-      {                                                                               \
-        PRIMITIVE = false,                                                            \
-        NULL_TYPE = false,                                                            \
-      };                                                                              \
-      static __host__ __device__ T Max()                                              \
-      {                                                                               \
-        T retval = {REPEAT_TO_LIST(N, ::cuda::std::numeric_limits<BaseT>::max())};    \
-        return retval;                                                                \
-      }                                                                               \
-      static __host__ __device__ T Lowest()                                           \
-      {                                                                               \
-        T retval = {REPEAT_TO_LIST(N, ::cuda::std::numeric_limits<BaseT>::lowest())}; \
-        return retval;                                                                \
-      }                                                                               \
-    };                                                                                \
-    }                                                                                 \
-    CUB_NAMESPACE_END                                                                 \
     _LIBCUDACXX_BEGIN_NAMESPACE_STD                                                   \
     template <>                                                                       \
     class numeric_limits<T>                                                           \

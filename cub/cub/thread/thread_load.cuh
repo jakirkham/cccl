@@ -355,7 +355,7 @@ template <typename T>
 _CCCL_DEVICE _CCCL_FORCEINLINE T
 ThreadLoad(const T* ptr, Int2Type<LOAD_VOLATILE> /*modifier*/, Int2Type<true> /*is_pointer*/)
 {
-  return ThreadLoadVolatilePointer(ptr, Int2Type<Traits<T>::PRIMITIVE>());
+  return ThreadLoadVolatilePointer(ptr, Int2Type<detail::is_primitive<T>::value>{});
 }
 
 /**

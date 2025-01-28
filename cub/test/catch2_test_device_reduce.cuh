@@ -114,6 +114,8 @@ CUB_NAMESPACE_END
 
 CUB_NAMESPACE_BEGIN
 
+CUB_NAMESPACE_BEGIN
+
 template <typename Key, typename Value>
 static std::ostream& operator<<(std::ostream& os, const KeyValuePair<Key, Value>& val)
 {

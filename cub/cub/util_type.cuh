@@ -43,6 +43,7 @@
 #  pragma system_header
 #endif // no system header
 
+#include <cub/detail/type_traits.cuh>
 #include <cub/detail/uninitialized_copy.cuh>
 
 #include <cuda/std/cstdint>
@@ -768,17 +769,6 @@ struct BinaryOpHasIdxParam<T,
   CCCL_DEPRECATED_BECAUSE("Use ::value instead") static constexpr bool HAS_PARAM = true;
 };
 
-/******************************************************************************
- * Simple type traits utilities.
- *
- * For example:
- *     Traits<int>::CATEGORY             // SIGNED_INTEGER
- *     Traits<NullType>::NULL_TYPE       // true
- *     Traits<uint4>::CATEGORY           // NOT_A_NUMBER
- *     Traits<uint4>::PRIMITIVE;         // false
- *
- ******************************************************************************/
-
 /**
  * \brief Basic type traits categories
  */
@@ -945,7 +935,7 @@ template <> struct NumericTraits<unsigned long> :       BaseTraits<UNSIGNED_INTE
 template <> struct NumericTraits<unsigned long long> :  BaseTraits<UNSIGNED_INTEGER, true, false, unsigned long long, unsigned long long> {};
 
 
-#if CUB_IS_INT128_ENABLED
+#if _CCCL_HAS_INT128()
 template <>
 struct NumericTraits<__uint128_t>
 {
@@ -1014,7 +1004,7 @@ struct NumericTraits<__int128_t>
     return reinterpret_cast<T&>(retval);
   }
 };
-#endif
+#endif // _CCCL_HAS_INT128()
 
 template <> struct NumericTraits<float> :               BaseTraits<FLOATING_POINT, true, false, unsigned int, float> {};
 template <> struct NumericTraits<double> :              BaseTraits<FLOATING_POINT, true, false, unsigned long long, double> {};
@@ -1055,6 +1045,44 @@ using Traits
 
 namespace detail
 {
+// __uint128_t and __int128_t are not primitive
+template <typename T>
+using is_primitive = ::cuda::std::bool_constant<is_one_of<
+  T,
+  char,
+  signed char,
+  short,
+  int,
+  long,
+  long long,
+  unsigned char,
+  unsigned short,
+  unsigned int,
+  unsigned long,
+  unsigned long long,
+  bool,
+  float,
+  double
+#  if defined(_CCCL_HAS_NVFP16)
+  ,
+  __half
+#  endif // defined(_CCCL_HAS_NVFP16)
+#  if defined(_CCCL_HAS_NVBF16)
+  ,
+  __nv_bfloat16
+#  endif // defined(_CCCL_HAS_NVFP16)
+#  if defined(__CUDA_FP8_TYPES_EXIST__)
+  ,
+  __nv_fp8_e4m3,
+  __nv_fp8_e5m2
+#  endif // defined(__CUDA_FP8_TYPES_EXIST__)
+  >()>;
+
+#  ifndef _CCCL_NO_VARIABLE_TEMPLATES
+template <typename T>
+inline constexpr bool is_primitive_v = is_primitive<T>::value;
+#  endif // !_CCCL_NO_VARIABLE_TEMPLATES
+
 //! Trait to get an unsigned integral type with the same size as T, exposed as a nested alias ::type.
 template <typename T, typename SFINAE = void>
 struct unsigned_bits;
