@@ -21,17 +21,12 @@ from ..iterators._iterators import IteratorBase
 from ..typing import DeviceArrayLike, GpuStruct
 
 
-def _dtype_validation(dt1, dt2):
-    if dt1 != dt2:
-        raise TypeError(f"dtype mismatch: __init__={dt1}, __call__={dt2}")
-
-
-class _Reduce:
+class _Scan:
     # TODO: constructor shouldn't require concrete `d_in`, `d_out`:
     def __init__(
         self,
         d_in: DeviceArrayLike | IteratorBase,
-        d_out: DeviceArrayLike,
+        d_out: DeviceArrayLike | IteratorBase,
         op: Callable,
         h_init: np.ndarray | GpuStruct,
     ):
@@ -39,11 +34,7 @@ class _Reduce:
         self.build_result = None
 
         d_in_cccl = cccl.to_cccl_iter(d_in)
-        self._ctor_d_in_cccl_type_enum_name = cccl.type_enum_as_name(
-            d_in_cccl.value_type.type.value
-        )
-        self._ctor_d_out_dtype = protocols.get_dtype(d_out)
-        self._ctor_init_dtype = h_init.dtype
+        d_out_cccl = cccl.to_cccl_iter(d_out)
         cc_major, cc_minor = cuda.get_current_device().compute_capability
         cub_path, thrust_path, libcudacxx_path, cuda_include_path = get_paths()
         bindings = get_bindings()
@@ -53,10 +44,9 @@ class _Reduce:
             value_type = numba.typeof(h_init)
         sig = (value_type, value_type)
         self.op_wrapper = cccl.to_cccl_op(op, sig)
-        d_out_cccl = cccl.to_cccl_iter(d_out)
-        self.build_result = cccl.DeviceReduceBuildResult()
+        self.build_result = cccl.DeviceScanBuildResult()
 
-        error = bindings.cccl_device_reduce_build(
+        error = bindings.cccl_device_scan_build(
             ctypes.byref(self.build_result),
             d_in_cccl,
             d_out_cccl,
@@ -70,7 +60,7 @@ class _Reduce:
             ctypes.c_char_p(cuda_include_path),
         )
         if error != enums.CUDA_SUCCESS:
-            raise ValueError("Error building reduce")
+            raise ValueError("Error building scan")
 
     def __call__(
         self,
@@ -82,6 +72,7 @@ class _Reduce:
         stream=None,
     ):
         d_in_cccl = cccl.to_cccl_iter(d_in)
+        d_out_cccl = cccl.to_cccl_iter(d_out)
         if d_in_cccl.type.value == cccl.IteratorKind.ITERATOR:
             assert num_items is not None
         else:
@@ -90,12 +81,9 @@ class _Reduce:
                 num_items = d_in.size
             else:
                 assert num_items == d_in.size
-        _dtype_validation(
-            self._ctor_d_in_cccl_type_enum_name,
-            cccl.type_enum_as_name(d_in_cccl.value_type.type.value),
-        )
-        _dtype_validation(self._ctor_d_out_dtype, protocols.get_dtype(d_out))
-        _dtype_validation(self._ctor_init_dtype, h_init.dtype)
+        if d_out_cccl.type.value == cccl.IteratorKind.POINTER:
+            assert num_items == d_out.size
+
         stream_handle = protocols.validate_and_get_stream(stream)
         bindings = get_bindings()
         if temp_storage is None:
@@ -106,8 +94,7 @@ class _Reduce:
             # Note: this is slightly slower, but supports all ndarray-like objects as long as they support CAI
             # TODO: switch to use gpumemoryview once it's ready
             d_temp_storage = temp_storage.__cuda_array_interface__["data"][0]
-        d_out_cccl = cccl.to_cccl_iter(d_out)
-        error = bindings.cccl_device_reduce(
+        error = bindings.cccl_device_scan(
             self.build_result,
             ctypes.c_void_p(d_temp_storage),
             ctypes.byref(temp_storage_bytes),
@@ -127,19 +114,21 @@ class _Reduce:
         if self.build_result is None:
             return
         bindings = get_bindings()
-        bindings.cccl_device_reduce_cleanup(ctypes.byref(self.build_result))
+        bindings.cccl_device_scan_cleanup(ctypes.byref(self.build_result))
 
 
 def make_cache_key(
     d_in: DeviceArrayLike | IteratorBase,
-    d_out: DeviceArrayLike,
+    d_out: DeviceArrayLike | IteratorBase,
     op: Callable,
     h_init: np.ndarray,
 ):
     d_in_key = (
         d_in.kind if isinstance(d_in, IteratorBase) else protocols.get_dtype(d_in)
     )
-    d_out_key = protocols.get_dtype(d_out)
+    d_out_key = (
+        d_out.kind if isinstance(d_out, IteratorBase) else protocols.get_dtype(d_out)
+    )
     op_key = CachableFunction(op)
     h_init_key = h_init.dtype
     return (d_in_key, d_out_key, op_key, h_init_key)
@@ -148,30 +137,10 @@ def make_cache_key(
 # TODO Figure out `sum` without operator and initial value
 # TODO Accept stream
 @cache_with_key(make_cache_key)
-def reduce_into(
+def scan(
     d_in: DeviceArrayLike | IteratorBase,
-    d_out: DeviceArrayLike,
+    d_out: DeviceArrayLike | IteratorBase,
     op: Callable,
     h_init: np.ndarray,
 ):
-    """Computes a device-wide reduction using the specified binary ``op`` functor and initial value ``init``.
-
-    Example:
-        The code snippet below demonstrates the usage of the ``reduce_into`` API:
-
-        .. literalinclude:: ../../python/cuda_parallel/tests/test_reduce_api.py
-            :language: python
-            :dedent:
-            :start-after: example-begin reduce-min
-            :end-before: example-end reduce-min
-
-    Args:
-        d_in: CUDA device array storing the input sequence of data items
-        d_out: CUDA device array storing the output aggregate
-        op: Binary reduction
-        init: Numpy array storing initial value of the reduction
-
-    Returns:
-        A callable object that can be used to perform the reduction
-    """
-    return _Reduce(d_in, d_out, op, h_init)
+    return _Scan(d_in, d_out, op, h_init)
