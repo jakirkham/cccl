@@ -104,7 +104,7 @@ bool binary_equal(
 {
   d_tmp = h_reference;
 
-  using bit_ordered_t = typename cub::Twiddle<T>::UnsignedBits;
+  using bit_ordered_t = typename cub::detail::twiddle<T>::UnsignedBits;
 
   auto d_output_ptr    = reinterpret_cast<const bit_ordered_t*>(thrust::raw_pointer_cast(d_output.data()));
   auto d_reference_ptr = reinterpret_cast<const bit_ordered_t*>(thrust::raw_pointer_cast(d_tmp.data()));

@@ -81,7 +81,7 @@ struct BaseDigitExtractor
   static_assert(Traits<KeyT>::CATEGORY != FLOATING_POINT, "");
   _CCCL_SUPPRESS_DEPRECATED_POP
 
-  using UnsignedBits = typename Twiddle<KeyT>::UnsignedBits;
+  using UnsignedBits = typename detail::twiddle<KeyT>::UnsignedBits;
 
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits ProcessFloatMinusZero(UnsignedBits key)
   {
@@ -97,13 +97,13 @@ struct BaseDigitExtractor<KeyT, true>
   static_assert(Traits<KeyT>::CATEGORY == FLOATING_POINT, "");
   _CCCL_SUPPRESS_DEPRECATED_POP
 
-  using UnsignedBits = typename Twiddle<KeyT>::UnsignedBits;
+  using UnsignedBits = typename detail::twiddle<KeyT>::UnsignedBits;
 
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits ProcessFloatMinusZero(UnsignedBits key)
   {
     UnsignedBits TWIDDLED_MINUS_ZERO_BITS =
-      Twiddle<KeyT>::In(UnsignedBits(1) << UnsignedBits(8 * sizeof(UnsignedBits) - 1));
-    UnsignedBits TWIDDLED_ZERO_BITS = Twiddle<KeyT>::In(0);
+      detail::twiddle<KeyT>::In(UnsignedBits(1) << UnsignedBits(8 * sizeof(UnsignedBits) - 1));
+    UnsignedBits TWIDDLED_ZERO_BITS = detail::twiddle<KeyT>::In(0);
     return key == TWIDDLED_MINUS_ZERO_BITS ? TWIDDLED_ZERO_BITS : key;
   }
 };
@@ -240,23 +240,23 @@ using decomposer_check_t = is_tuple_of_references_to_fundamental_types_t<invoke_
 template <class T>
 struct bit_ordered_conversion_policy_t
 {
-  using bit_ordered_type = typename Twiddle<T>::UnsignedBits;
+  using bit_ordered_type = typename twiddle<T>::UnsignedBits;
 
   static _CCCL_HOST_DEVICE bit_ordered_type to_bit_ordered(detail::identity_decomposer_t, bit_ordered_type val)
   {
-    return Twiddle<T>::In(val);
+    return twiddle<T>::In(val);
   }
 
   static _CCCL_HOST_DEVICE bit_ordered_type from_bit_ordered(detail::identity_decomposer_t, bit_ordered_type val)
   {
-    return Twiddle<T>::Out(val);
+    return twiddle<T>::Out(val);
   }
 };
 
 template <class T>
 struct bit_ordered_inversion_policy_t
 {
-  using bit_ordered_type = typename Twiddle<T>::UnsignedBits;
+  using bit_ordered_type = typename twiddle<T>::UnsignedBits;
 
   static _CCCL_HOST_DEVICE bit_ordered_type inverse(detail::identity_decomposer_t, bit_ordered_type val)
   {

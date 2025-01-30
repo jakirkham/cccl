@@ -1149,15 +1149,13 @@ struct unsigned_bits<bool, void>
 //! Alias to an unsigned integral type with the same size as T.
 template <typename T>
 using unsigned_bits_t = typename unsigned_bits<T>::type;
-} // namespace detail
 
-// TODO(bgruber): do we actually need to expose Twiddle publicly?
 //! Bit twiddling utilities
 template <typename T, typename SFINAE = void>
-struct Twiddle;
+struct twiddle;
 
 template <typename T>
-struct Twiddle<
+struct twiddle<
   T,
   ::cuda::std::enable_if_t<::cuda::std::__cccl_is_unsigned_integer<T>::value
                            || (::cuda::std::is_same_v<T, char> && !::cuda::std::numeric_limits<char>::is_signed)>>
@@ -1176,12 +1174,12 @@ struct Twiddle<
 };
 
 template <typename T>
-struct Twiddle<
+struct twiddle<
   T,
   ::cuda::std::enable_if_t<::cuda::std::__cccl_is_signed_integer<T>::value
                            || (::cuda::std::is_same_v<T, char> && ::cuda::std::numeric_limits<char>::is_signed)>>
 {
-  using UnsignedBits = detail::unsigned_bits_t<T>;
+  using UnsignedBits = unsigned_bits_t<T>;
 
   static constexpr UnsignedBits high_bit = UnsignedBits(1) << (sizeof(UnsignedBits) * CHAR_BIT - 1);
 
@@ -1197,9 +1195,9 @@ struct Twiddle<
 };
 
 template <typename T>
-struct Twiddle<T, ::cuda::std::enable_if_t<::cuda::is_floating_point_v<T>>>
+struct twiddle<T, ::cuda::std::enable_if_t<::cuda::is_floating_point_v<T>>>
 {
-  using UnsignedBits = detail::unsigned_bits_t<T>;
+  using UnsignedBits = unsigned_bits_t<T>;
 
   static constexpr UnsignedBits high_bit = UnsignedBits(1) << (sizeof(UnsignedBits) * CHAR_BIT - 1);
 
@@ -1217,9 +1215,9 @@ struct Twiddle<T, ::cuda::std::enable_if_t<::cuda::is_floating_point_v<T>>>
 };
 
 template <>
-struct Twiddle<bool, void>
+struct twiddle<bool, void>
 {
-  using UnsignedBits = detail::unsigned_bits_t<bool>;
+  using UnsignedBits = unsigned_bits_t<bool>;
 
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits In(UnsignedBits key)
   {
@@ -1231,7 +1229,7 @@ struct Twiddle<bool, void>
     return key;
   }
 };
-
+} // namespace detail
 #endif // _CCCL_DOXYGEN_INVOKED
 
 CUB_NAMESPACE_END
