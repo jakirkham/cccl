@@ -1149,87 +1149,83 @@ struct unsigned_bits<bool, void>
 //! Alias to an unsigned integral type with the same size as T.
 template <typename T>
 using unsigned_bits_t = typename unsigned_bits<T>::type;
+} // namespace detail
 
-//! Bit twiddling utilities
+// TODO(bgruber): find a better name for key_traits
 template <typename T, typename SFINAE = void>
-struct twiddle;
+struct key_traits;
 
 template <typename T>
-struct twiddle<
-  T,
-  ::cuda::std::enable_if_t<::cuda::std::__cccl_is_unsigned_integer<T>::value
-                           || (::cuda::std::is_same_v<T, char> && !::cuda::std::numeric_limits<char>::is_signed)>>
+struct key_traits<T,
+                  ::cuda::std::enable_if_t<(::cuda::std::is_integral<T>::value && ::cuda::std::is_unsigned<T>::value)
+#  if _CCCL_HAS_INT128()
+                                           || ::cuda::std::is_same<T, __uint128_t>::value
+#  endif // _CCCL_HAS_INT128()
+                                           >>
 {
-  using UnsignedBits = T;
+  using unsigned_bits                       = detail::unsigned_bits_t<T>;
+  static constexpr unsigned_bits lowest_key = unsigned_bits(0);
+  static constexpr unsigned_bits max_key    = unsigned_bits(-1);
 
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits In(UnsignedBits key)
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE unsigned_bits twiddle_in(unsigned_bits key)
   {
     return key;
   }
 
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits Out(UnsignedBits key)
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE unsigned_bits twiddle_out(unsigned_bits key)
   {
     return key;
   }
 };
 
+// test whether key_traits<bool> is a complete type (so bool is handled as unsigned above)
+static_assert(sizeof(key_traits<bool>), "");
+
 template <typename T>
-struct twiddle<
-  T,
-  ::cuda::std::enable_if_t<::cuda::std::__cccl_is_signed_integer<T>::value
-                           || (::cuda::std::is_same_v<T, char> && ::cuda::std::numeric_limits<char>::is_signed)>>
+struct key_traits<T,
+                  ::cuda::std::enable_if_t<(::cuda::std::is_integral<T>::value && ::cuda::std::is_signed<T>::value)
+#  if _CCCL_HAS_INT128()
+                                           || ::cuda::std::is_same<T, __int128_t>::value>
+#  endif // _CCCL_HAS_INT128()
+                  >
 {
-  using UnsignedBits = unsigned_bits_t<T>;
+  using unsigned_bits                       = detail::unsigned_bits_t<T>;
+  static constexpr unsigned_bits high_bit   = unsigned_bits(1) << ((sizeof(unsigned_bits) * CHAR_BIT) - 1);
+  static constexpr unsigned_bits lowest_key = high_bit;
+  static constexpr unsigned_bits max_key    = unsigned_bits(-1) ^ lowest_key;
 
-  static constexpr UnsignedBits high_bit = UnsignedBits(1) << (sizeof(UnsignedBits) * CHAR_BIT - 1);
-
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits In(UnsignedBits key)
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE unsigned_bits twiddle_in(unsigned_bits key)
   {
     return key ^ high_bit;
   }
 
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits Out(UnsignedBits key)
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE unsigned_bits twiddle_out(unsigned_bits key)
   {
     return key ^ high_bit;
   }
 };
 
 template <typename T>
-struct twiddle<T, ::cuda::std::enable_if_t<::cuda::is_floating_point_v<T>>>
+struct key_traits<T, ::cuda::std::enable_if_t<::cuda::is_floating_point<T>::value>>
 {
-  using UnsignedBits = unsigned_bits_t<T>;
+  using unsigned_bits                       = detail::unsigned_bits_t<T>;
+  static constexpr unsigned_bits high_bit   = unsigned_bits(1) << ((sizeof(unsigned_bits) * CHAR_BIT) - 1);
+  static constexpr unsigned_bits lowest_key = unsigned_bits(-1);
+  static constexpr unsigned_bits max_key    = unsigned_bits(-1) ^ high_bit;
 
-  static constexpr UnsignedBits high_bit = UnsignedBits(1) << (sizeof(UnsignedBits) * CHAR_BIT - 1);
-
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits In(UnsignedBits key)
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE unsigned_bits twiddle_in(unsigned_bits key)
   {
-    const UnsignedBits mask = (key & high_bit) ? UnsignedBits(-1) : high_bit;
+    const unsigned_bits mask = (key & high_bit) ? unsigned_bits(-1) : high_bit;
     return key ^ mask;
   };
 
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits Out(UnsignedBits key)
+  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE unsigned_bits twiddle_out(unsigned_bits key)
   {
-    const UnsignedBits mask = (key & high_bit) ? high_bit : UnsignedBits(-1);
+    const unsigned_bits mask = (key & high_bit) ? high_bit : unsigned_bits(-1);
     return key ^ mask;
   }
 };
 
-template <>
-struct twiddle<bool, void>
-{
-  using UnsignedBits = unsigned_bits_t<bool>;
-
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits In(UnsignedBits key)
-  {
-    return key;
-  }
-
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits Out(UnsignedBits key)
-  {
-    return key;
-  }
-};
-} // namespace detail
 #endif // _CCCL_DOXYGEN_INVOKED
 
 CUB_NAMESPACE_END

@@ -81,7 +81,7 @@ struct BaseDigitExtractor
   static_assert(Traits<KeyT>::CATEGORY != FLOATING_POINT, "");
   _CCCL_SUPPRESS_DEPRECATED_POP
 
-  using UnsignedBits = typename detail::twiddle<KeyT>::UnsignedBits;
+  using UnsignedBits = typename key_traits<KeyT>::unsigned_bits;
 
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits ProcessFloatMinusZero(UnsignedBits key)
   {
@@ -97,13 +97,13 @@ struct BaseDigitExtractor<KeyT, true>
   static_assert(Traits<KeyT>::CATEGORY == FLOATING_POINT, "");
   _CCCL_SUPPRESS_DEPRECATED_POP
 
-  using UnsignedBits = typename detail::twiddle<KeyT>::UnsignedBits;
+  using UnsignedBits = typename key_traits<KeyT>::unsigned_bits;
 
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE UnsignedBits ProcessFloatMinusZero(UnsignedBits key)
   {
     UnsignedBits TWIDDLED_MINUS_ZERO_BITS =
-      detail::twiddle<KeyT>::In(UnsignedBits(1) << UnsignedBits(8 * sizeof(UnsignedBits) - 1));
-    UnsignedBits TWIDDLED_ZERO_BITS = detail::twiddle<KeyT>::In(0);
+      key_traits<KeyT>::twiddle_in(UnsignedBits(1) << UnsignedBits(8 * sizeof(UnsignedBits) - 1));
+    UnsignedBits TWIDDLED_ZERO_BITS = key_traits<KeyT>::twiddle_in(0);
     return key == TWIDDLED_MINUS_ZERO_BITS ? TWIDDLED_ZERO_BITS : key;
   }
 };
@@ -216,7 +216,7 @@ struct is_fundamental_type
 };
 
 template <class T>
-struct is_fundamental_type<T, ::cuda::std::void_t<typename unsigned_bits<T>::type>>
+struct is_fundamental_type<T, ::cuda::std::void_t<typename key_traits<T>::unsigned_bits>>
 {
   static constexpr bool value = true;
 };
@@ -240,23 +240,23 @@ using decomposer_check_t = is_tuple_of_references_to_fundamental_types_t<invoke_
 template <class T>
 struct bit_ordered_conversion_policy_t
 {
-  using bit_ordered_type = typename twiddle<T>::UnsignedBits;
+  using bit_ordered_type = typename key_traits<T>::unsigned_bits;
 
   static _CCCL_HOST_DEVICE bit_ordered_type to_bit_ordered(detail::identity_decomposer_t, bit_ordered_type val)
   {
-    return twiddle<T>::In(val);
+    return key_traits<T>::twiddle_in(val);
   }
 
   static _CCCL_HOST_DEVICE bit_ordered_type from_bit_ordered(detail::identity_decomposer_t, bit_ordered_type val)
   {
-    return twiddle<T>::Out(val);
+    return key_traits<T>::twiddle_out(val);
   }
 };
 
 template <class T>
 struct bit_ordered_inversion_policy_t
 {
-  using bit_ordered_type = typename twiddle<T>::UnsignedBits;
+  using bit_ordered_type = typename key_traits<T>::unsigned_bits;
 
   static _CCCL_HOST_DEVICE bit_ordered_type inverse(detail::identity_decomposer_t, bit_ordered_type val)
   {
@@ -264,49 +264,10 @@ struct bit_ordered_inversion_policy_t
   }
 };
 
-template <typename T, typename SFINAE = void>
-struct key_traits;
-
-template <typename T>
-struct key_traits<T,
-                  ::cuda::std::enable_if_t<(::cuda::std::is_integral<T>::value && ::cuda::std::is_unsigned<T>::value)
-#  if _CCCL_HAS_INT128()
-                                           || ::cuda::std::is_same<T, __uint128_t>::value
-#  endif // _CCCL_HAS_INT128()
-                                           >>
-{
-  using unsigned_bits                       = unsigned_bits_t<T>;
-  static constexpr unsigned_bits lowest_key = unsigned_bits(0);
-  static constexpr unsigned_bits max_key    = unsigned_bits(-1);
-};
-
-template <typename T>
-struct key_traits<T,
-                  ::cuda::std::enable_if_t<(::cuda::std::is_integral<T>::value && ::cuda::std::is_signed<T>::value)
-#  if _CCCL_HAS_INT128()
-                                           || ::cuda::std::is_same<T, __int128_t>::value>
-#  endif // _CCCL_HAS_INT128()
-                  >
-{
-  using unsigned_bits                       = unsigned_bits_t<T>;
-  static constexpr unsigned_bits high_bit   = unsigned_bits(1) << ((sizeof(unsigned_bits) * CHAR_BIT) - 1);
-  static constexpr unsigned_bits lowest_key = high_bit;
-  static constexpr unsigned_bits max_key    = unsigned_bits(-1) ^ lowest_key;
-};
-
-template <typename T>
-struct key_traits<T, ::cuda::std::enable_if_t<::cuda::is_floating_point<T>::value>>
-{
-  using unsigned_bits                       = unsigned_bits_t<T>;
-  static constexpr unsigned_bits high_bit   = unsigned_bits(1) << ((sizeof(unsigned_bits) * CHAR_BIT) - 1);
-  static constexpr unsigned_bits lowest_key = unsigned_bits(-1);
-  static constexpr unsigned_bits max_key    = unsigned_bits(-1) ^ high_bit;
-};
-
 template <class T, bool = is_fundamental_type<T>::value>
 struct traits_t
 {
-  using bit_ordered_type              = unsigned_bits_t<T>;
+  using bit_ordered_type              = typename key_traits<T>::unsigned_bits;
   using bit_ordered_conversion_policy = bit_ordered_conversion_policy_t<T>;
   using bit_ordered_inversion_policy  = bit_ordered_inversion_policy_t<T>;
 

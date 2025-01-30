@@ -367,3 +367,24 @@ struct CUB_NS_QUALIFIER::detail::unsigned_bits<half_t, void>
 {
   using type = unsigned short;
 };
+
+_CCCL_SUPPRESS_DEPRECATED_PUSH
+template <>
+struct CUB_NS_QUALIFIER::detail::FpLimits<half_t>
+{
+  static __host__ __device__ __forceinline__ half_t Max()
+  {
+    return (half_t::max)();
+  }
+
+  static __host__ __device__ __forceinline__ half_t Lowest()
+  {
+    return half_t::lowest();
+  }
+};
+
+template <>
+struct CUB_NS_QUALIFIER::detail::NumericTraits<half_t>
+    : CUB_NS_QUALIFIER::detail::BaseTraits<FLOATING_POINT, true, false, unsigned short, half_t>
+{};
+_CCCL_SUPPRESS_DEPRECATED_POP
