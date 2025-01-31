@@ -1185,9 +1185,9 @@ template <typename T>
 struct key_traits<T,
                   ::cuda::std::enable_if_t<(::cuda::std::is_integral<T>::value && ::cuda::std::is_signed<T>::value)
 #  if _CCCL_HAS_INT128()
-                                           || ::cuda::std::is_same<T, __int128_t>::value>
+                                           || ::cuda::std::is_same<T, __int128_t>::value
 #  endif // _CCCL_HAS_INT128()
-                  >
+                                           >>
 {
   using unsigned_bits                       = detail::unsigned_bits_t<T>;
   static constexpr unsigned_bits high_bit   = unsigned_bits(1) << ((sizeof(unsigned_bits) * CHAR_BIT) - 1);
