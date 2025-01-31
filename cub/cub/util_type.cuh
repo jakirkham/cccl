@@ -68,9 +68,9 @@ _CCCL_DIAG_PUSH
 _CCCL_DIAG_POP
 #endif // _CCCL_HAS_NVFP8()
 
-#if defined(_CCCL_HAS_NVFP8)
+#if _CCCL_HAS_NVFP8()
 #  include <cuda_fp8.h>
-#endif // _CCCL_HAS_NVFP8
+#endif // _CCCL_HAS_NVFP8()
 
 #if _CCCL_COMPILER(NVRTC)
 #  include <cuda/std/iterator>
