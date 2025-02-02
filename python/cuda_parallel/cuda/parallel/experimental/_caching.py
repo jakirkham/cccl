@@ -52,7 +52,11 @@ class CachableFunction:
         self._identity = (
             self._func.__code__.co_code,
             self._func.__code__.co_consts,
-            self._func.__closure__,
+            tuple(
+                cell.cell_contents
+                for cell in self._func.__closure__
+                if cell is not None
+            ),
         )
 
     def __eq__(self, other):

@@ -10,6 +10,7 @@ import numpy as np
 
 import cuda.parallel.experimental.algorithms as algorithms
 import cuda.parallel.experimental.iterators as iterators
+from cuda.parallel.experimental.struct import gpu_struct
 
 
 def exclusive_scan_host(h_input: np.ndarray, op, h_init=0):
@@ -61,3 +62,31 @@ def test_scan_iterator_input():
     expected = exclusive_scan_host(np.arange(1, num_items + 1, dtype=dtype), op, h_init)
 
     np.testing.assert_allclose(expected, got)
+
+
+def test_scan_struct_type():
+    @gpu_struct
+    class XY:
+        x: np.int32
+        y: np.int32
+
+    def op(a, b):
+        return XY(a.x + b.x, a.y + b.y)
+
+    d_input = cp.random.randint(0, 256, (10, 2), dtype=np.int32).view(XY.dtype)
+    d_output = cp.empty_like(d_input)
+
+    h_init = XY(0, 0)
+
+    exclusive_scan_device(d_input, d_output, len(d_input), op, h_init)
+
+    got = d_output.get()
+    expected_x = exclusive_scan_host(
+        d_input.get()["x"], lambda a, b: a + b, np.asarray([h_init.x])
+    )
+    expected_y = exclusive_scan_host(
+        d_input.get()["y"], lambda a, b: a + b, np.asarray([h_init.y])
+    )
+
+    np.testing.assert_allclose(expected_x, got["x"])
+    np.testing.assert_allclose(expected_y, got["y"])
