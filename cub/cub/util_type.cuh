@@ -864,7 +864,7 @@ struct BaseTraits<SIGNED_INTEGER, true, false, _UnsignedBits, T>
 };
 
 template <typename T>
-struct CCCL_DEPRECATED_BECAUSE("Use cuda::std::numeric_limits instead") FpLimits
+struct FpLimits
 {
   static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE T Max()
   {
